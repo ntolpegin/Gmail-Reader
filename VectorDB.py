@@ -80,8 +80,6 @@ def query_vectorDB_combined(collection, query_text, sender=None, n_results=1):
     
     return results
 
-
-# ------------------ need to test below ------------------
 def extract_body_text_from_results(results):
     """Extract body text from ChromaDB query results
     
