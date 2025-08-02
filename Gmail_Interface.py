@@ -301,8 +301,6 @@ def get_unread_emails(service, max_results=100):
 
     return emails
 
-
-# need to test this
 def prepend_with_title(title, title_content, body_text):
     """
     Add a title and its content to the top of a text body.
@@ -380,7 +378,6 @@ def create_credentials():
     # try to gain access to Gmail
     try:
         creds = flow.run_local_server(port=0)
-        print("New credentials created successfully")
     # if there is an error, print the error and return
     except Exception as e:
         print(f"Error creating credentials: {e}")
@@ -390,7 +387,6 @@ def create_credentials():
     try:
         with open('token.pkl', 'wb') as token:
             pickle.dump(creds, token)
-        print("Credentials saved to token.pkl")
     except Exception as e:
         print(f"Error saving credentials: {e}")
         print("Credentials will not be saved for future use")
@@ -399,12 +395,11 @@ def create_credentials():
 
 
 def start_up():
-    print("starting")
+    print("Starting up...")
     creds = None
 
     # Checks if the token.pkl file exists, and if so, loads the credentials from it
     if os.path.exists('token.pkl'):
-        print("Loading credentials from token.pkl")
         try:
             with open('token.pkl', 'rb') as token:
                 creds = pickle.load(token)
@@ -458,7 +453,6 @@ def start_up():
                 return
 
     # Build the Gmail service - moved outside the if block
-    print("building the service")
     service = build('gmail', 'v1', credentials=creds)
 
     return service

@@ -5,5 +5,7 @@ google-api-python-client
 openai
 tiktoken
 beautifulsoup4
+bs4
 python-dotenv
+dotenv
 chromadb

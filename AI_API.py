@@ -23,7 +23,6 @@ def num_tokens_from_string(string: str, model: str = "gpt-4") -> int:
     num_tokens = len(encoding.encode(string))
     return num_tokens
 
-# need to test this
 def summarize_Emails(emails):
     # Process emails by prepending subject and sender information
     processed_emails = []
@@ -37,8 +36,6 @@ def summarize_Emails(emails):
     # Now summarize the processed emails
     return summarize_array(processed_emails)
 
-# need to handle adding subjects and from addresses to the strings before this 
-# need to test this
 def summarize_array(array, depth=0):
     '''
     Summarize an array of strings into a single string using recursive chunking.
@@ -128,12 +125,15 @@ def split_text_into_chunks(text, max_tokens):
         
         if num_tokens_from_string(test_chunk) > max_tokens:
             if current_chunk:
-                chunks.append(current_chunk)
+                chunks.append(current_chunk + "\n\n[CHUNK_BREAK]\n")  # Add special separator
                 current_chunk = sentence
             else:
                 # Single sentence is too long, split by characters
                 char_chunks = split_by_characters(sentence, max_tokens)
-                chunks.extend(char_chunks)
+                # Add separator to all but the last chunk
+                for i, chunk in enumerate(char_chunks[:-1]):
+                    chunks.append(chunk + "\n\n[CHUNK_BREAK]\n")
+                chunks.append(char_chunks[-1])  # Last chunk doesn't need separator
         else:
             current_chunk = test_chunk
     
@@ -142,7 +142,6 @@ def split_text_into_chunks(text, max_tokens):
     
     return chunks
 
-# need to test this
 def split_by_characters(text, max_tokens):
     """
     Split text by characters when sentence-level splitting isn't sufficient.
@@ -164,7 +163,6 @@ def split_by_characters(text, max_tokens):
     
     return chunks
 
-# need to test this
 def summarize_text(text):
     """
     Summarize a single text using GPT.
@@ -184,13 +182,14 @@ def summarize_text(text):
 - Relevant dates, people, or deadlines mentioned
 - Overall purpose/intent of the communication
 
-Keep the summary brief but informative. The summary should be significantly shorter than the original text.
+Keep the summary brief but informative. The summary should be substantially shorter than the original text. 
+
+If the text provided appears to already be a summary, limit any additional summary to one to two sentences.
 
 Content to summarize:
 """
 
 
-    print("AI API CALLED")    
     try:
         completion = client.chat.completions.create(
             model="gpt-4",
@@ -216,7 +215,6 @@ Content to summarize:
         print(f"Error summarizing text: {e}")
         return text[:500]  # Return truncated version as fallback
 
-# need to test this
 def clean_email_text(text, max_tokens =5000, depth=0):
     """
     Clean email text with proper chunking and recursion protection.
@@ -227,13 +225,12 @@ def clean_email_text(text, max_tokens =5000, depth=0):
         depth (int): Recursion depth to prevent infinite loops
     """    
 
-    prompt = '''Please extract and return only the main body content from this email text. Remove any:
-    - Email headers and metadata
-    - Signatures
-    - Automated footers or disclaimers
-    - HTML artifacts or formatting remnants
+    prompt = '''Please extract and return only the main body content from this email text. 
+    
+    Remove any HTML artifacts or formatting remnants. If the email is a forwarded email, treat the header data of the forwarded email as part of the body, and leave it in.
+    For example, if person X forwards an email to person Y from person Z, the email address from person Z should still be included.  
 
-    Return only the core message content that the sender actually wrote. If there's no meaningful content, return an empty string.
+    Return only the core message content that the sender actually wrote. If there's no meaningful content or there is no content at all, return an empty string.
 
     Email text:
     '''
@@ -248,7 +245,6 @@ def clean_email_text(text, max_tokens =5000, depth=0):
     
     # If text fits, process it
     if num_tokens_from_string(text) <= available_tokens:
-        print("API CALLED")
         try:
             completion = client.chat.completions.create(
                 model="gpt-4",
@@ -260,6 +256,9 @@ def clean_email_text(text, max_tokens =5000, depth=0):
                 ],
                 temperature=0.1
             )
+
+            if completion.choices[0].message.content.strip() == "You didn't provide any email text. Please provide the text so I can extract the main body content.":
+                return ""
             return completion.choices[0].message.content.strip()
         except Exception as e:
             print(f"Error cleaning email text: {e}")
@@ -310,9 +309,6 @@ Answer:"""
     
     if prompt_tokens <= max_tokens:
         # Prompt fits, send directly
-        print("AI API CALLED")
-        print(prompt)
-        print("--------------------------------")
         try:
             completion = client.chat.completions.create(
                 model="gpt-4",
@@ -344,9 +340,6 @@ Answer:"""
         
         # Check if this fits now
         if num_tokens_from_string(new_prompt) <= max_tokens:
-            print("AI API CALLED")
-            print(new_prompt)
-            print("--------------------------------")
             try:
                 completion = client.chat.completions.create(
                     model="gpt-4",
@@ -369,9 +362,6 @@ Answer:"""
             summarized_question = question
 
             if num_tokens_from_string(question) <= max_tokens:
-                print("AI API CALLED")
-                print(question)
-                print("--------------------------------")
                 try:
                     completion = client.chat.completions.create(
                         model="gpt-4",
@@ -397,9 +387,6 @@ Answer:"""
             
             # Final check - if this is still too long, we need to truncate aggressively
             if num_tokens_from_string(final_prompt) <= max_tokens:
-                print("AI API CALLED")
-                print(final_prompt)
-                print("--------------------------------")
                 try:
                     completion = client.chat.completions.create(
                         model="gpt-4",
@@ -430,10 +417,6 @@ Email Context Summary:
                 truncated_context = truncate_text_to_tokens(summarized_context, available_tokens)
                 
                 final_truncated_prompt = base_prompt + truncated_context + ending
-                
-                print("AI API CALLED")
-                print(final_truncated_prompt)
-                print("--------------------------------")
 
                 try:
                     completion = client.chat.completions.create(
